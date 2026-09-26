@@ -6,6 +6,7 @@
 - [Indigo plugin developer guide](https://docs.indigodomo.com/2025.2/plugin-dev/guide/): plugin layout and distribution.
 - [Indigo HTTP callback reference](https://docs.indigodomo.com/2025.2/plugin-dev/reference/plugin-py/http-requests/): receiving requests through the existing web server, authentication, callback properties, and response structure.
 - [Indigo Webhooks](https://docs.indigodomo.com/2025.2/api/webhooks/): JSON POST, authentication, event data, and plugin broadcasts. Its trigger/action-script examples are an alternative to the direct plugin callback, not a required part of this plugin.
+- [Indigo web-server authentication and local secrets](https://docs.indigodomo.com/2025.2/user/remote-access/web-server/#local-secrets): local credential file and reload requirements.
 - [Ruuvi RAWv2 definitions](https://docs.ruuvi.com/communication/bluetooth-advertisements/data-format-5-rawv2): sequence numbers, units, unavailable values, and test vectors.
 
 Checked September 26, 2026. Verify the installed Gateway's firmware behavior

@@ -3,10 +3,11 @@
 Leave the MQTT connector, decoder, Shims devices, Gateway MQTT configuration,
 and Tag firmware unchanged. Initial HTTP development runs alongside them.
 
-The saved database contains devices named **Ruuvitag Freezer** and
+The active database contains devices named **Ruuvitag Freezer** and
 **Ruuvitag Refrigerator**. Their IDs and MAC addresses are recorded privately in
 `local/migration-inventory.md` and the local payload capture. The saved snapshot
-may not match live configuration.
+may not match live configuration. A subsequent live API read confirmed both
+names and IDs, and confirmed that MQTT was connected with current readings.
 
 Keep the existing device names during development. New plugin devices need
 distinct temporary names while both integrations coexist. Preserve any name the
@@ -17,6 +18,11 @@ conditions, scripts, control pages, logging, and integrations consuming either
 existing device. The initial saved-XML scan found no exact device-ID references
 inside Trigger, ActionGroup, Schedule, or other Device elements, but this does
 not rule out embedded scripts, encoded references, or external consumers.
+Inspection of the active database under the Databases directory subsequently
+found references to both devices on two control pages; their names and IDs are
+recorded in the private inventory. These control-page references must also be
+repointed at cutover. No matching trigger device-ID references were found in
+that file; review name-based scripts and live trigger configuration separately.
 
 Native sensorValue temperature consumers may be straightforward to move, but
 the replacement has a different device ID. Update each reference explicitly;

@@ -3,6 +3,10 @@
 ## Observations
 
 The installed Indigo client and server Info.plist files both report 2025.2.0.
+The running server confirms 2025.2.0, API 3.8, and Python 3.13.9. Its web-server
+plugin is also 2025.2.0/API 3.8. The authenticated Gateway configuration reports
+firmware v1.16.3 and radio firmware v2.0.0. MQTT is enabled with `ruuvi_decoded`;
+the current HTTP configuration uses the raw `ruuvi` format and Ruuvi's service.
 The existing MQTT Shims decoder imports Df5Decoder and decodes raw advertising
 data. A separate saved MQTT connector payload is already decoded; its anonymized
 copy is in `tests/fixtures/decoded-mqtt-anonymized.json`. This is a saved database
@@ -43,10 +47,21 @@ plugins, but the documented setup uses a Web Server trigger. The direct plugin
 callback gives this plugin its own request validation and HTTP response without
 requiring a user trigger or action script.
 
-The supplied Gateway is reachable: its root page returned HTTP 200 and a
-`Server: Ruuvi Gateway` header. Reading `/ruuvi.json` returned a redirect to
-`/#auth`; authentication is required before its configuration and firmware can
-be inspected. Its address is retained only in local working context.
+The supplied Gateway is reachable, and its configuration was inspected through
+the user's authenticated Safari session. No Gateway settings were changed.
+
+A temporary, local-only capture plugin (2026.0.0) is installed with the same
+`com.berkinet.indigoplugin.ruuvi` identifier. It exposes only the hidden receive
+callback and writes the first bounded JSON body to a private temporary file.
+It creates no devices and updates no states. The installed callback returned
+405 for GET in an inter-plugin test, and an unauthenticated HTTP POST to IWS
+returned 401. The real authenticated Gateway POST remains to be verified.
+
+The user has not created an Indigo credential for the Gateway yet. Keep the
+existing web-server authentication enabled. Either an Indigo account API key
+or a local secret is supported by IWS; a local secret is loaded from the
+installation's Preferences/secrets.json. No credential has been created or
+published by this project.
 
 ## Sensor identity and states
 
