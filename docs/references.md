@@ -11,3 +11,6 @@
 
 Checked September 26, 2026. Verify the installed Gateway's firmware behavior
 against its actual push before finalizing the parser or response contract.
+
+- [Gateway v1.16.3 HTTP response handling](https://github.com/ruuvi/ruuvi.gateway_esp.c/blob/v1.16.3/main/http.c): accepts 200–299 and selects success/error timer handling.
+- [Gateway v1.16.3 HTTP timers](https://github.com/ruuvi/ruuvi.gateway_esp.c/blob/v1.16.3/main/adv_post_timers.c): configured interval and error retry scheduling.

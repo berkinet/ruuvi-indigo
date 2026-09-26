@@ -1,0 +1,193 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Devices>
+  <Device id="ruuviTag" type="sensor" subType="kSensorDeviceSubType.Temperature">
+    <Name>RuuviTag (HTTP)</Name>
+    <ConfigUI>
+      <Field id="SupportsSensorValue" type="checkbox" defaultValue="true" hidden="true" />
+      <Field id="SupportsOnState" type="checkbox" defaultValue="false" hidden="true" />
+      <Field id="address" type="textfield">
+        <Label>Sensor MAC address:</Label>
+      </Field>
+      <Field id="note" type="label">
+        <Label>MAC is the stable sensor identity. The Gateway normally creates this device automatically. Temperature uses °C, pressure hPa, battery V, acceleration g.</Label>
+      </Field>
+    </ConfigUI>
+    <States>
+      <State id="temperature">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>temperature (°C)</TriggerLabel>
+        <ControlPageLabel>temperature (°C)</ControlPageLabel>
+      </State>
+      <State id="humidity">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>humidity (% RH)</TriggerLabel>
+        <ControlPageLabel>humidity (% RH)</ControlPageLabel>
+      </State>
+      <State id="pressure">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>pressure (hPa)</TriggerLabel>
+        <ControlPageLabel>pressure (hPa)</ControlPageLabel>
+      </State>
+      <State id="accelX">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>accelX (g)</TriggerLabel>
+        <ControlPageLabel>accelX (g)</ControlPageLabel>
+      </State>
+      <State id="accelY">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>accelY (g)</TriggerLabel>
+        <ControlPageLabel>accelY (g)</ControlPageLabel>
+      </State>
+      <State id="accelZ">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>accelZ (g)</TriggerLabel>
+        <ControlPageLabel>accelZ (g)</ControlPageLabel>
+      </State>
+      <State id="movementCounter">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>movementCounter</TriggerLabel>
+        <ControlPageLabel>movementCounter</ControlPageLabel>
+      </State>
+      <State id="voltage">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>voltage (V)</TriggerLabel>
+        <ControlPageLabel>voltage (V)</ControlPageLabel>
+      </State>
+      <State id="txPower">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>txPower (dBm)</TriggerLabel>
+        <ControlPageLabel>txPower (dBm)</ControlPageLabel>
+      </State>
+      <State id="measurementSequenceNumber">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>measurementSequenceNumber</TriggerLabel>
+        <ControlPageLabel>measurementSequenceNumber</ControlPageLabel>
+      </State>
+      <State id="rssi">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>rssi (dBm)</TriggerLabel>
+        <ControlPageLabel>rssi (dBm)</ControlPageLabel>
+      </State>
+      <State id="duplicateCount">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>duplicateCount</TriggerLabel>
+        <ControlPageLabel>duplicateCount</ControlPageLabel>
+      </State>
+      <State id="outOfOrderCount">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>outOfOrderCount</TriggerLabel>
+        <ControlPageLabel>outOfOrderCount</ControlPageLabel>
+      </State>
+      <State id="temperatureAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>temperatureAvailable</TriggerLabel>
+        <ControlPageLabel>temperatureAvailable</ControlPageLabel>
+      </State>
+      <State id="humidityAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>humidityAvailable</TriggerLabel>
+        <ControlPageLabel>humidityAvailable</ControlPageLabel>
+      </State>
+      <State id="pressureAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>pressureAvailable</TriggerLabel>
+        <ControlPageLabel>pressureAvailable</ControlPageLabel>
+      </State>
+      <State id="accelXAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>accelXAvailable</TriggerLabel>
+        <ControlPageLabel>accelXAvailable</ControlPageLabel>
+      </State>
+      <State id="accelYAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>accelYAvailable</TriggerLabel>
+        <ControlPageLabel>accelYAvailable</ControlPageLabel>
+      </State>
+      <State id="accelZAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>accelZAvailable</TriggerLabel>
+        <ControlPageLabel>accelZAvailable</ControlPageLabel>
+      </State>
+      <State id="movementCounterAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>movementCounterAvailable</TriggerLabel>
+        <ControlPageLabel>movementCounterAvailable</ControlPageLabel>
+      </State>
+      <State id="voltageAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>voltageAvailable</TriggerLabel>
+        <ControlPageLabel>voltageAvailable</ControlPageLabel>
+      </State>
+      <State id="txPowerAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>txPowerAvailable</TriggerLabel>
+        <ControlPageLabel>txPowerAvailable</ControlPageLabel>
+      </State>
+      <State id="measurementSequenceNumberAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>measurementSequenceNumberAvailable</TriggerLabel>
+        <ControlPageLabel>measurementSequenceNumberAvailable</ControlPageLabel>
+      </State>
+      <State id="rssiAvailable">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>rssiAvailable</TriggerLabel>
+        <ControlPageLabel>rssiAvailable</ControlPageLabel>
+      </State>
+      <State id="stale">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>stale</TriggerLabel>
+        <ControlPageLabel>stale</ControlPageLabel>
+      </State>
+      <State id="status">
+        <ValueType>String</ValueType>
+        <TriggerLabel>status</TriggerLabel>
+        <ControlPageLabel>status</ControlPageLabel>
+      </State>
+      <State id="gatewayMac">
+        <ValueType>String</ValueType>
+        <TriggerLabel>gatewayMac</TriggerLabel>
+        <ControlPageLabel>gatewayMac</ControlPageLabel>
+      </State>
+      <State id="lastHeard">
+        <ValueType>String</ValueType>
+        <TriggerLabel>lastHeard</TriggerLabel>
+        <ControlPageLabel>lastHeard</ControlPageLabel>
+      </State>
+      <State id="gatewayReportedAt">
+        <ValueType>String</ValueType>
+        <TriggerLabel>gatewayReportedAt</TriggerLabel>
+        <ControlPageLabel>gatewayReportedAt</ControlPageLabel>
+      </State>
+      <State id="sensorReceivedAt">
+        <ValueType>String</ValueType>
+        <TriggerLabel>sensorReceivedAt</TriggerLabel>
+        <ControlPageLabel>sensorReceivedAt</ControlPageLabel>
+      </State>
+      <State id="lastMeasurementAt">
+        <ValueType>String</ValueType>
+        <TriggerLabel>lastMeasurementAt</TriggerLabel>
+        <ControlPageLabel>lastMeasurementAt</ControlPageLabel>
+      </State>
+      <State id="timeQuality">
+        <ValueType>String</ValueType>
+        <TriggerLabel>timeQuality</TriggerLabel>
+        <ControlPageLabel>timeQuality</ControlPageLabel>
+      </State>
+      <State id="lastReportKind">
+        <ValueType>String</ValueType>
+        <TriggerLabel>lastReportKind</TriggerLabel>
+        <ControlPageLabel>lastReportKind</ControlPageLabel>
+      </State>
+      <State id="missingReadings">
+        <ValueType>String</ValueType>
+        <TriggerLabel>missingReadings</TriggerLabel>
+        <ControlPageLabel>missingReadings</ControlPageLabel>
+      </State>
+      <State id="tracking">
+        <ValueType>String</ValueType>
+        <TriggerLabel>tracking</TriggerLabel>
+        <ControlPageLabel>tracking</ControlPageLabel>
+      </State>
+    </States>
+  </Device>
+</Devices>

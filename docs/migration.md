@@ -3,11 +3,10 @@
 Leave the MQTT connector, decoder, Shims devices, Gateway MQTT configuration,
 and Tag firmware unchanged. Initial HTTP development runs alongside them.
 
-The active database contains devices named **Ruuvitag Freezer** and
-**Ruuvitag Refrigerator**. Their IDs and MAC addresses are recorded privately in
-`local/migration-inventory.md` and the local payload capture. The saved snapshot
-may not match live configuration. A subsequent live API read confirmed both
-names and IDs, and confirmed that MQTT was connected with current readings.
+The existing device IDs, names, MAC addresses, and control-page consumers are
+recorded privately in `local/migration-inventory.md`. Live API reads confirmed
+the saved identities and current MQTT readings. The two new native devices use
+the corresponding original names with ` (HTTP)` appended during verification.
 
 Keep the existing device names during development. New plugin devices need
 distinct temporary names while both integrations coexist. Preserve any name the

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PluginConfig>
+    <SupportURL>https://github.com/berkinet/ruuvi-indigo</SupportURL>
+    <Field id="instructions" type="label"><Label>Configure your Gateway to POST decoded JSON to /message/com.berkinet.indigoplugin.ruuvi/receive/ on Indigo's web server. Authenticate with an Indigo API key.</Label></Field>
+    <Field id="gatewayMac" type="textfield" defaultValue=""><Label>Gateway MAC (optional):</Label></Field>
+    <Field id="gatewayHint" type="label"><Label>When specified, only reports from this Gateway are accepted. This does not replace web-server authentication.</Label></Field>
+    <Field id="staleSeconds" type="textfield" defaultValue="300"><Label>Stale after (seconds):</Label></Field>
+    <Field id="autoCreate" type="checkbox" defaultValue="true"><Label>Create a sensor for each new RuuviTag</Label></Field>
+</PluginConfig>

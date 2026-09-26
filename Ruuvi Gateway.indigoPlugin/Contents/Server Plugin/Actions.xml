@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Actions>
+    <Action id="receive" uiPath="hidden">
+        <Name>Receive Gateway report</Name>
+        <CallbackMethod>receive</CallbackMethod>
+    </Action>
+</Actions>

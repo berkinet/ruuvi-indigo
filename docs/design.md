@@ -1,121 +1,92 @@
 # Design and verification
 
-## Observations
+## Observed versions and wire format
 
-The installed Indigo client and server Info.plist files both report 2025.2.0.
-The running server confirms 2025.2.0, API 3.8, and Python 3.13.9. Its web-server
-plugin is also 2025.2.0/API 3.8. The authenticated Gateway configuration reports
-firmware v1.16.3 and radio firmware v2.0.0. MQTT is enabled with `ruuvi_decoded`;
-the current HTTP configuration uses the raw `ruuvi` format and Ruuvi's service.
-The existing MQTT Shims decoder imports Df5Decoder and decodes raw advertising
-data. A separate saved MQTT connector payload is already decoded; its anonymized
-copy is in `tests/fixtures/decoded-mqtt-anonymized.json`. This is a saved database
-snapshot, not a new HTTP capture or proof of current sensor health.
+The installed Indigo client/server are 2025.2.0, API 3.8, Python 3.13.9. The
+Gateway runs v1.16.3 with radio firmware v2.0.0. These were inspected before
+implementing the receiver, along with an actual decoded HTTP push captured by
+Indigo's existing web server. The anonymized capture is
+`tests/fixtures/decoded-http-anonymized.json`.
 
-That payload contains `dataFormat: 5`, temperature in degrees Celsius, humidity
-in percent, pressure in Pa, acceleration in g, voltage in V, transmit power and
-RSSI in dBm, movement counter, measurementSequenceNumber, sensor ID, Gateway MAC,
-Gateway reporting time (`gwts`), and sensor reception time (`ts`).
+The HTTP envelope contains `data.tags` keyed by sensor MAC, `data.timestamp`
+for the Gateway report, and `timestamp` inside each tag for radio reception.
+It differs from both MQTT and `/history`. The separate MQTT fixture verifies
+that the HTTP parser rejects the MQTT shape. Decoded RAWv2 temperature is °C,
+humidity %, pressure Pa, acceleration g, and battery voltage V. Only pressure
+is rescaled, to hPa. Battery voltage is not converted to a percentage.
 
-The published HTTP push envelope instead contains `data.tags` keyed by sensor
-MAC, `data.timestamp` for reporting time, and a per-tag `timestamp` for reception
-time. Its example documents raw advertising data. Do not construct a supposedly
-real decoded HTTP fixture by wrapping the MQTT sample in this envelope.
+## Transport
 
-## HTTP integration
+Indigo routes `/message/com.berkinet.indigoplugin.ruuvi/receive/` to a hidden
+plugin action. This is internal callback routing, with no user action group,
+trigger, action script, or variable. The callback receives
+`incoming_request_method`, `headers`, and `request_body` in `action.props`.
+Indigo authenticates the request before invoking the plugin.
 
-Use `/message/com.berkinet.indigoplugin.ruuvi/receive/` on Indigo's existing web
-server. Indigo requires a hidden plugin action declaration for this callback;
-this is internal routing, not a user action group. The documented callback
-receives `incoming_request_method`, `headers`, and `request_body` in action.props.
+The user entered an Indigo API key directly into the Gateway's Bearer field.
+The Gateway's Check succeeded, and a subsequent real two-tag push reached the
+endpoint. An unauthenticated HTTP POST returned 401 before and after deployment.
+The plugin never reads or logs authorization headers. Credentials and private
+captures are excluded from the repository.
 
-Indigo documents Bearer API-key authentication, and Ruuvi documents Bearer support.
-Verify this pairing against the installed web server configuration and Gateway
-firmware without changing global web-server security. Never log authorization
-headers or commit credentials. Verify unauthenticated requests are rejected
-before sensor state changes.
+The installed IWS implementation requires an `indigo.Dict` response with integer
+`status`, an optional header dictionary, and **nonempty** string `content`.
+An empty content value takes IWS's error path. The receiver returns 200 with a
+small JSON summary. Gateway v1.16.3 source accepts 200–299; non-success changes
+its HTTP retry period to 67 seconds. No rate override header is sent, so the
+configured Gateway sending interval remains authoritative. This source review
+does not establish that delivery timing is reliable in the live installation.
 
-Indigo accepts a response dictionary containing integer `status`, optional
-`headers`, and string `content`. Check the actual Gateway's accepted success
-status, timeout, and retry behavior before selecting the response contract.
-Validate the full request before creating devices. Bound request size and tag
-count. Reject malformed requests clearly; isolate malformed readings without
-substituting zero, and never acknowledge an update that failed as successful.
+The parser validates the entire envelope before changing devices, with a
+256 KiB body limit and at most 256 tags. Invalid JSON/envelopes return 400;
+unsupported formats are counted as ignored. Unavailable individual readings
+retain the prior numeric value with an explicit availability flag of false.
+A runtime state-write failure returns 500; already-applied measurements are
+safe to retry. Logs contain concise errors, not payloads or tracebacks.
 
-The Webhooks API also offers JSON POST processing and broadcasts to subscribing
-plugins, but the documented setup uses a Web Server trigger. The direct plugin
-callback gives this plugin its own request validation and HTTP response without
-requiring a user trigger or action script.
+## Stable identities and state
 
-The supplied Gateway is reachable, and its configuration was inspected through
-the user's authenticated Safari session. No Gateway settings were changed.
+MAC addresses are normalized to uppercase colon-separated form and used as
+Indigo device addresses. Discovery reuses matching devices owned by this plugin,
+preserves user-assigned names, and does not take over MQTT Shims devices. A
+configured duplicate MAC is reported as an error. Disabled devices are skipped.
 
-A temporary, local-only capture plugin (2026.0.0) is installed with the same
-`com.berkinet.indigoplugin.ruuvi` identifier. It exposes only the hidden receive
-callback and writes the first bounded JSON body to a private temporary file.
-It creates no devices and updates no states. The installed callback returned
-405 for GET in an inter-plugin test, and an unauthenticated HTTP POST to IWS
-returned 401. The real authenticated Gateway POST remains to be verified.
+The native `sensorValue` is temperature. Other readings have numeric states
+and individual Boolean availability states. Missing temperature sets a native
+sensor error. Temperature keeps RAWv2's three decimal places internally with a
+two-decimal display. Persistent `tracking` contains deduplication and freshness
+bookkeeping; no Indigo variables are used.
 
-The user has not created an Indigo credential for the Gateway yet. Keep the
-existing web-server authentication enabled. Either an Indigo account API key
-or a local secret is supported by IWS; a local secret is loaded from the
-installation's Preferences/secrets.json. No credential has been created or
-published by this project.
+## Independent deduplication and freshness
 
-## Sensor identity and states
+An equal valid sequence and equal decoded measurements suppress redundant
+measurement writes. A smaller sequence with current reception timing is valid,
+including rollover and Tag restarts. Reused sequences with changed values are
+accepted. Missing/unavailable sequence numbers disable deduplication.
 
-Normalize valid MAC addresses to uppercase colon-separated form. Reuse an existing
-device belonging to this plugin with that address; never duplicate it on restart
-or rename it on receipt. Do not take over existing MQTT Shims devices.
+`lastHeard` records each valid tag report's arrival at Indigo, including
+duplicates and discarded older receptions. `gatewayReportedAt` and
+`sensorReceivedAt` expose accepted source timestamps separately.
+`lastMeasurementAt` records acceptance of new measurements.
 
-Use Indigo's native sensorValue for temperature and numeric device states for
-humidity, pressure, voltage, acceleration, movement, RSSI, and measurement sequence.
-Expose measurement availability separately. Use Celsius initially to match the
-existing devices. If pressure is displayed in hPa, convert Pa by dividing by 100;
-do not apply raw Bluetooth scaling to values already decoded by the Gateway.
-Battery voltage is not a battery percentage.
+A newer radio reception refreshes availability even for an unchanged sequence.
+A repeated cached reception does not. Empty batches never refresh sensors.
+Older receptions cannot overwrite newer readings. The five-second local
+freshness check performs no network access. Stale devices retain their readings
+but set `stale=true` and a native sensor error; fresh receptions clear the error.
 
-Handle omitted/null/non-finite/unavailable readings without publishing false
-zeroes. Keep the last valid numeric value with an explicit unavailable indicator
-and visible status. Validate decoded ranges and integer counters. RAWv2 sequence
-65535 and movement counter 255 mean unavailable, not valid counter values.
+Local elapsed time uses a monotonic clock anchored at startup. A future-skewed
+Gateway clock uses report-to-reception age and does not refresh repeated source
+timestamps. Its correction to current time starts a new reception epoch.
+Past-skewed clocks and delayed old reports cannot be distinguished and are
+conservatively treated as old. Without a sensor timestamp, freshness falls back
+to report receipt and `timeQuality=reportReceipt`; this cannot identify cached
+radio data. Keep NTP enabled. Tracking survives plugin restarts, but a host
+clock change across restarts can temporarily mark sensors stale until fresh
+source timestamps arrive.
 
-## Independent freshness and deduplication
+## Verification status
 
-- `lastHeard`: Indigo receipt time, updated on every valid report for this tag,
-  including duplicate measurements.
-- `gatewayReportedAt`: Gateway batch report time.
-- `sensorReceivedAt`: most recent actual tag reception time reported by Gateway.
-- `lastMeasurementAt`: time associated with the last accepted new measurement.
-
-An equal valid measurement sequence suppresses redundant measurement updates,
-not reception metadata or availability updates. A newer tag reception timestamp
-with unchanged measurements keeps a sensor healthy. A cached tag record with an
-old reception timestamp must eventually become stale despite fresh batch reports.
-
-Use reception-time ordering to prevent delayed batches overwriting newer data.
-Do not require sequence values to increase: rollover and restarts can lower them.
-Consider same-sequence collisions after a long outage/restart; persist enough
-state to avoid accidental replay or permanent suppression across plugin restarts.
-Missing sequence disables sequence deduplication rather than dropping the report.
-
-Track local elapsed time with a monotonic clock where possible, and handle
-Gateway clock skew/reset explicitly. If timestamps are absent, surface that
-freshness is based on report receipt with reduced confidence. A local stale-time
-check may run periodically; it performs no network polling. Threshold must be
-configurable and comfortably exceed the Gateway push interval.
-
-## Required verification before replacement
-
-1. Inspect Gateway firmware, HTTP settings, and real decoded HTTP push.
-2. Confirm endpoint authentication and Gateway success/retry response behavior.
-3. Test actual fixture, invalid JSON, unexpected shape, empty batches, missing
-   readings, malformed MACs, unsupported formats, units, and non-finite numbers.
-4. Test equal sequence/new reception, equal sequence/cached reception, rollover,
-   restart, delayed reports, missing sequence, and clock changes.
-5. Verify one device per MAC, restart persistence, and preservation of names.
-6. Test stale transitions and recovery with simulated time, independently of
-   measurement changes; confirm behavior in Indigo with the real Gateway.
-7. Compare replacement readings alongside MQTT Shims without disabling it.
-8. Inventory and migrate consumers only after the replacement is verified.
+See [verification](verification.md) for automated and live evidence and any
+outstanding delivery issue. MQTT remains the production integration until
+sustained HTTP delivery and the explicit consumer migration are verified.
