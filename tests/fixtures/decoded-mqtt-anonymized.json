@@ -1,0 +1,20 @@
+{
+  "gw_mac": "AA:BB:CC:DD:EE:01",
+  "rssi": -42,
+  "aoa": [],
+  "gwts": 1783867908,
+  "ts": 1783867906,
+  "dataFormat": 5,
+  "temperature": 1.005,
+  "humidity": 28.73,
+  "pressure": 99922,
+  "accelX": -0.04,
+  "accelY": -0.024,
+  "accelZ": 0.996,
+  "movementCounter": 171,
+  "voltage": 2.953,
+  "txPower": 4,
+  "measurementSequenceNumber": 28911,
+  "id": "AA:BB:CC:DD:EE:02",
+  "coords": ""
+}
