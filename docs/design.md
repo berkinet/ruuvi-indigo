@@ -38,6 +38,16 @@ Validate the full request before creating devices. Bound request size and tag
 count. Reject malformed requests clearly; isolate malformed readings without
 substituting zero, and never acknowledge an update that failed as successful.
 
+The Webhooks API also offers JSON POST processing and broadcasts to subscribing
+plugins, but the documented setup uses a Web Server trigger. The direct plugin
+callback gives this plugin its own request validation and HTTP response without
+requiring a user trigger or action script.
+
+The supplied Gateway is reachable: its root page returned HTTP 200 and a
+`Server: Ruuvi Gateway` header. Reading `/ruuvi.json` returned a redirect to
+`/#auth`; authentication is required before its configuration and firmware can
+be inspected. Its address is retained only in local working context.
+
 ## Sensor identity and states
 
 Normalize valid MAC addresses to uppercase colon-separated form. Reuse an existing
