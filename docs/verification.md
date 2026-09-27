@@ -1,4 +1,33 @@
-# Verification record — 2026-09-26
+# Verification record — 2026-09-27
+
+## 2026.1.1 robustness update
+
+- All 43 Python 3.13 unittest cases pass, including eight new regressions for
+  per-report creation/state/health failures, invalid and duplicate configured
+  MAC isolation, retry recovery, private diagnostics, and normalized Gateway
+  identity in empty batches. Failure injection used the fake Indigo bridge;
+  no duplicate devices or broken configuration were introduced in the household.
+- Validated plugin plist, XML, Python syntax, and whitespace.
+- Revalidated the saved actual decoded HTTP capture against the revised parser.
+- Confirmed the installed files matched 2026.1.0 before saving a private backup,
+  deploying 2026.1.1, and restarting only the Ruuvi plugin.
+- Confirmed 2026.1.1 running in Indigo 2025.2.0. Both existing sensors remained
+  Online and received new genuine Gateway pushes after deployment. Device IDs,
+  names, and MAC identities were preserved.
+- Through Indigo's native scripting API, the deployed receive callback accepted
+  the saved older real capture with HTTP status 200 and two out-of-order reports,
+  accepted an empty batch with status 200 and zero counts, and rejected malformed
+  JSON with status 400. These were callback checks, not HTTP wire captures.
+- An unauthenticated loopback HTTP POST was rejected with 401 after deployment.
+- No plugin errors or tracebacks were present after the updated receiver started.
+- Kept the request lock protecting discovery and tracking; no lock-scope change.
+- Real captures, installed backup, and before/after device snapshots remain in
+  ignored `local/`. No MQTT, firmware, device naming, or consumer changes.
+
+The original release's verification follows. Its stale/recovery and extended
+HTTP-cadence checks were not repeated for this narrowly scoped update.
+
+# Original 2026.1.0 verification — 2026-09-26
 
 ## Automated
 

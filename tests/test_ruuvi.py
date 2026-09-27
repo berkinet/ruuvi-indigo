@@ -21,9 +21,10 @@ class RuuviTests(unittest.TestCase):
         return parse(json.dumps(doc))[0][0]
 
     def test_real_http_fixture(self):
-        reports, skipped = parse(json.dumps(self.doc))
+        reports, skipped, gateway = parse(json.dumps(self.doc))
         self.assertEqual(len(reports), 2)
         self.assertEqual(skipped, 0)
+        self.assertEqual(gateway, self.doc['data']['gw_mac'])
         self.assertEqual(reports[0].values['pressure'], 100491)
         self.assertEqual(reports[0].values['temperature'], 2.47)
         self.assertEqual(reports[1].values['voltage'], 2.556)
@@ -44,12 +45,17 @@ class RuuviTests(unittest.TestCase):
 
     def test_unsupported_format_skipped(self):
         self.doc['data']['tags'][self.address]['dataFormat'] = 6
-        reports, skipped = parse(json.dumps(self.doc))
+        reports, skipped, gateway = parse(json.dumps(self.doc))
         self.assertEqual((len(reports), skipped), (1, 1))
 
     def test_empty_batch(self):
         self.doc['data']['tags'] = {}
-        self.assertEqual(parse(json.dumps(self.doc)), ([], 0))
+        self.assertEqual(parse(json.dumps(self.doc)), ([], 0, self.doc['data']['gw_mac']))
+
+    def test_empty_batch_returns_normalized_gateway(self):
+        self.doc['data']['tags'] = {}
+        self.doc['data']['gw_mac'] = 'aa-bb-cc-dd-ee-01'
+        self.assertEqual(parse(json.dumps(self.doc)), ([], 0, 'AA:BB:CC:DD:EE:01'))
 
     def test_mac_normalization_and_mismatch(self):
         self.assertEqual(mac('aa-bb-cc-dd-ee-02'), self.address)

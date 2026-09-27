@@ -191,6 +191,104 @@ class PluginTests(unittest.TestCase):
             self.assertEqual(self.send()['status'], 500)
         self.assertEqual(len(self.devices), 3)
 
+    def test_write_failure_does_not_starve_later_sensor(self):
+        self.send()
+        self.devices[1].fail = True
+        before = self.devices[2].states['lastHeard']
+        self.now += 30
+        with self.assertLogs('ruuvi-test', level='ERROR') as logs:
+            response = self.send()
+        self.assertEqual(response['status'], 500)
+        self.assertNotEqual(self.devices[2].states['lastHeard'], before)
+        self.assertEqual(json.loads(response['content'])['failed'], 1)
+        self.assertIn('device 1', ' '.join(logs.output))
+        self.devices[1].fail = False
+        self.assertEqual(json.loads(self.send()['content'])['duplicates'], 2)
+
+    def test_duplicate_identity_blocks_all_copies_but_not_other_sensors(self):
+        self.send()
+        original = self.devices[1]
+        for ident in (3, 4):
+            self.devices[ident] = FakeDevice(ident, original.address.lower().replace(':', '-'), 'Copy')
+        before = {i: copy.deepcopy(self.devices[i].states) for i in (1, 3, 4)}
+        self.now += 30
+        with self.assertLogs('ruuvi-test', level='ERROR') as logs:
+            response = self.send()
+        self.assertEqual(response['status'], 500)
+        self.assertEqual(len(self.devices), 4)
+        for ident, states in before.items():
+            self.assertEqual(self.devices[ident].states, states)
+        self.assertNotEqual(self.devices[2].states['lastHeard'], before[1]['lastHeard'])
+        self.assertIn('Remove the duplicate device', ' '.join(logs.output))
+        self.assertNotIn(original.address, ' '.join(logs.output))
+        del self.devices[3], self.devices[4]
+        self.assertEqual(self.send()['status'], 200)
+
+    def test_invalid_configured_mac_does_not_block_healthy_devices(self):
+        self.send()
+        self.devices[3] = FakeDevice(3, 'private-invalid-address', 'Bad config')
+        before = self.devices[2].states['lastHeard']
+        self.now += 30
+        with self.assertLogs('ruuvi-test', level='ERROR') as logs:
+            response = self.send()
+        self.assertEqual(response['status'], 500)
+        self.assertEqual(json.loads(response['content'])['configurationErrors'], 1)
+        self.assertNotEqual(self.devices[2].states['lastHeard'], before)
+        self.assertEqual(len(self.devices), 3)
+        self.assertIn('Device 3 has an invalid MAC', ' '.join(logs.output))
+        self.assertNotIn('private-invalid-address', ' '.join(logs.output))
+
+    def test_creation_failure_continues_and_hides_untrusted_exception_text(self):
+        create = self.fake.device.create
+        first = next(iter(self.doc['data']['tags']))
+        def fail_first(**kwargs):
+            if kwargs['address'] == first:
+                raise RuntimeError('secret payload or credential')
+            return create(**kwargs)
+        with patch.object(self.fake.device, 'create', side_effect=fail_first):
+            with self.assertLogs('ruuvi-test', level='ERROR') as logs:
+                response = self.send()
+        self.assertEqual(response['status'], 500)
+        self.assertEqual(len(self.devices), 1)
+        self.assertNotEqual(self.devices[1].address, first)
+        self.assertEqual(json.loads(response['content'])['measurements'], 1)
+        self.assertIn('create device for report 1', ' '.join(logs.output))
+        self.assertNotIn('secret payload', ' '.join(logs.output))
+        self.assertEqual(self.send()['status'], 200)
+        self.assertEqual(len(self.devices), 2)
+
+    def test_controlled_configuration_diagnostic_at_callback_boundaries(self):
+        self.send()
+        self.plugin.pluginPrefs['staleSeconds'] = 'private-invalid-value'
+        with self.assertLogs('ruuvi-test', level='ERROR') as logs:
+            self.assertEqual(self.send()['status'], 500)
+            self.plugin.deviceStartComm(self.devices[1])
+        self.assertEqual(len(logs.output), 2)
+        for line in logs.output:
+            self.assertIn('Set the stale timeout', line)
+            self.assertNotIn('private-invalid-value', line)
+
+    def test_invalid_allowlist_has_actionable_private_diagnostic(self):
+        self.plugin.pluginPrefs['gatewayMac'] = 'private-invalid-address'
+        with self.assertLogs('ruuvi-test', level='ERROR') as logs:
+            self.assertEqual(self.send()['status'], 500)
+        self.assertIn('Correct the Gateway MAC', ' '.join(logs.output))
+        self.assertNotIn('private-invalid-address', ' '.join(logs.output))
+        self.assertFalse(self.devices)
+
+    def test_health_write_failure_continues_and_retry_recovers(self):
+        self.send()
+        self.now += 30
+        before = self.devices[2].states['lastHeard']
+        with patch.object(self.devices[1], 'setErrorStateOnServer', side_effect=RuntimeError('private detail')):
+            with self.assertLogs('ruuvi-test', level='ERROR'):
+                self.assertEqual(self.send()['status'], 500)
+        self.assertNotEqual(self.devices[2].states['lastHeard'], before)
+        response = self.send()
+        self.assertEqual(response['status'], 200)
+        self.assertEqual(json.loads(response['content'])['duplicates'], 2)
+        self.assertIsNone(self.devices[1].error)
+
     def test_configuration_validation(self):
         self.assertFalse(self.plugin.validatePrefsConfigUi({'staleSeconds':'0'})[0])
         self.assertFalse(self.plugin.validatePrefsConfigUi({'staleSeconds':'bad'})[0])

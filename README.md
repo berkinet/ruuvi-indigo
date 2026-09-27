@@ -5,7 +5,7 @@ Each RuuviTag becomes one native Indigo temperature sensor with numeric states
 for its other measurements. No MQTT dependency, Gateway polling, additional
 server, action groups, or variables.
 
-**Version 2026.1.0.** Verified with authenticated live pushes, stale/recovery
+**Version 2026.1.1.** Verified with authenticated live pushes, stale/recovery
 transitions, and plugin restart persistence. Keep MQTT Shims in service during
 your own side-by-side observation; see the [verification record](docs/verification.md).
 
@@ -108,7 +108,12 @@ to current time is supported. Keep Gateway NTP enabled.
 - **405**: callback requires POST.
 - **413**: request exceeds 256 KiB.
 - **500**: batch could not be fully applied; retry is safe. Already-applied
-  updates are deduplicated on retry.
+  updates are deduplicated on retry. Healthy sensors continue updating when
+  another device has an invalid/duplicate MAC or a report fails. Reports for
+  duplicate identities are blocked without selecting a device or creating another.
+  Partial-batch responses include normal counts plus `failed` (reports that could
+  not be applied) and `configurationErrors` (invalid devices or extra MAC copies).
+  Request-wide failures return an error without counts.
 
 The full envelope is validated before devices are created. At most 256 tags
 are accepted. Unknown formats count as ignored. Payloads and credentials are

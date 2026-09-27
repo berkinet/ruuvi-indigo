@@ -7,6 +7,10 @@ import indigo
 from ruuvi import FIELDS, MAX_BODY, advance, fresh, iso, mac, parse, restore
 
 
+class ConfigurationError(ValueError):
+    """Controlled diagnostic text safe to include in callback logs."""
+
+
 class Plugin(indigo.PluginBase):
     def __init__(self, *args):
         super().__init__(*args)
@@ -19,9 +23,12 @@ class Plugin(indigo.PluginBase):
         return self._wall + time.monotonic() - self._mono
 
     def _stale_seconds(self):
-        value = int(self.pluginPrefs.get('staleSeconds', 300))
-        if not 30 <= value <= 86400:
-            raise ValueError('Stale timeout must be 30–86400 seconds')
+        try:
+            value = int(self.pluginPrefs.get('staleSeconds', 300))
+            if not 30 <= value <= 86400:
+                raise ValueError()
+        except (ValueError, TypeError, OverflowError):
+            raise ConfigurationError('Set the stale timeout to 30–86400 seconds') from None
         return value
 
     def startup(self):
@@ -77,47 +84,84 @@ class Plugin(indigo.PluginBase):
             if isinstance(body, str) and len(body.encode('utf-8')) > MAX_BODY:
                 return self._reply(413, error='Report too large')
             try:
-                reports, skipped = parse(body)
+                reports, skipped, gateway = parse(body)
             except ValueError as exc:
                 return self._reply(400, error=str(exc))
             allowed = self.pluginPrefs.get('gatewayMac', '').strip()
-            # Empty batches must obey the allowlist too.
-            gateway = mac(json.loads(body)['data']['gw_mac'])
-            if allowed and gateway != mac(allowed):
+            try:
+                allowed = mac(allowed) if allowed else ''
+            except ValueError:
+                raise ConfigurationError('Correct the Gateway MAC in plugin configuration') from None
+            # The parser returns the Gateway identity even for empty batches.
+            if allowed and gateway != allowed:
                 return self._reply(403, error='Gateway is not configured for this plugin')
             counts = dict(measurements=0, duplicates=0, outOfOrder=0, ignored=skipped)
             with self._lock:
                 self._stale_seconds()
-                devices = {}
+                devices, blocked = {}, set()
+                configuration_errors = 0
+                failed = 0
                 for sensor in indigo.devices.iter('self'):
-                    address = mac(sensor.address)
+                    try:
+                        address = mac(sensor.address)
+                    except ValueError:
+                        configuration_errors += 1
+                        self.logger.error('Device %s has an invalid MAC address. Correct its device configuration.',
+                                          sensor.id)
+                        continue
                     if address in devices:
-                        raise ValueError('Duplicate configured MAC; remove the duplicate device')
-                    devices[address] = sensor
-                for report in reports:
+                        blocked.add(address)
+                        configuration_errors += 1
+                        self.logger.error('Devices %s and %s have a duplicate configured MAC. '
+                                          'Remove the duplicate device; reports for this identity are blocked.',
+                                          devices[address].id, sensor.id)
+                    else:
+                        devices[address] = sensor
+                for index, report in enumerate(reports, 1):
+                    if report.mac in blocked:
+                        failed += 1
+                        continue
                     sensor = devices.get(report.mac)
-                    if sensor is None:
-                        if not self.pluginPrefs.get('autoCreate', True):
+                    operation = 'create device'
+                    try:
+                        if sensor is None:
+                            if not self.pluginPrefs.get('autoCreate', True):
+                                counts['ignored'] += 1
+                                continue
+                            sensor = indigo.device.create(
+                                protocol=indigo.kProtocol.Plugin,
+                                address=report.mac, name='RuuviTag ' + report.mac,
+                                deviceTypeId='ruuviTag',
+                                props={'address': report.mac, 'SupportsSensorValue': True,
+                                       'SupportsOnState': False})
+                            devices[report.mac] = sensor
+                        operation = 'update device'
+                        if not sensor.enabled:
                             counts['ignored'] += 1
                             continue
-                        sensor = indigo.device.create(
-                            protocol=indigo.kProtocol.Plugin,
-                            address=report.mac, name='RuuviTag ' + report.mac,
-                            deviceTypeId='ruuviTag',
-                            props={'address': report.mac, 'SupportsSensorValue': True,
-                                   'SupportsOnState': False})
-                        devices[report.mac] = sensor
-                    if not sensor.enabled:
-                        counts['ignored'] += 1
-                        continue
-                    result = self._update(sensor, report)
-                    counts[{'measurement': 'measurements', 'duplicate': 'duplicates',
-                            'outOfOrder': 'outOfOrder'}[result]] += 1
+                        result = self._update(sensor, report)
+                        counts[{'measurement': 'measurements', 'duplicate': 'duplicates',
+                                'outOfOrder': 'outOfOrder'}[result]] += 1
+                    except Exception as exc:
+                        failed += 1
+                        self.logger.error('Cannot %s for report %s (device %s; %s). '
+                                          'Check device configuration and Indigo connection; other reports continue.',
+                                          operation, index, sensor.id if sensor is not None else 'not created',
+                                          self._diagnostic(exc))
+            if failed or configuration_errors:
+                return self._reply(500, error='Report not fully applied; retry is safe',
+                                   failed=failed, configurationErrors=configuration_errors, **counts)
             return self._reply(200, **counts)
         except Exception as exc:
             self.logger.error('Gateway report could not be fully applied (%s). Check device configuration and Indigo connection.',
-                              type(exc).__name__)
+                              self._diagnostic(exc))
             return self._reply(500, error='Report not fully applied; retry is safe')
+
+    @staticmethod
+    def _diagnostic(exc):
+        # Bridge exceptions may contain payloads or secrets. Only our controlled
+        # configuration errors are safe to expose verbatim.
+        return str(exc) if isinstance(exc, ConfigurationError) else type(exc).__name__
 
     def _update(self, dev, report):
         now = self._now()
@@ -180,7 +224,8 @@ class Plugin(indigo.PluginBase):
                 dev.stateListOrDisplayStateIdChanged()
                 self._check_stale(dev)
         except Exception as exc:
-            self.logger.error('Cannot initialize Ruuvi device %s (%s).', dev.id, type(exc).__name__)
+            self.logger.error('Cannot initialize Ruuvi device %s (%s). Check device configuration and Indigo connection.',
+                              dev.id, self._diagnostic(exc))
 
     def _check_stale(self, dev):
         track = restore(dev.states.get('tracking', ''))
@@ -201,9 +246,9 @@ class Plugin(indigo.PluginBase):
                                     self._check_stale(dev)
                                 except Exception as exc:
                                     self.logger.error('Freshness check failed for device %s (%s).',
-                                                      dev.id, type(exc).__name__)
+                                                      dev.id, self._diagnostic(exc))
                 except Exception as exc:
-                    self.logger.error('Freshness checks unavailable (%s).', type(exc).__name__)
+                    self.logger.error('Freshness checks unavailable (%s).', self._diagnostic(exc))
                 self.sleep(5)
         except self.StopThread:
             pass

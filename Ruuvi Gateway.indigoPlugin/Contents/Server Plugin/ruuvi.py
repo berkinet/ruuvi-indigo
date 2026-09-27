@@ -121,7 +121,7 @@ def parse(body):
         values = {key: number(tag.get(key), *limits) for key, limits in FIELDS.items()}
         result.append(Report(address, gateway, reported, received, values,
                              number(tag.get('rssi'), -127, 20, True)))
-    return result, skipped
+    return result, skipped, gateway
 
 
 def restore(raw):
